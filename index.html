@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Greeting Site</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            cursor: pointer;
+            background-image: url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-Nuurldv2ceIR6di5oc32inswzAcvGO.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .greeting-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2rem;
+            transition: opacity 0.3s ease;
+        }
+
+        .greeting-view.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .welcome-text {
+            color: white;
+            font-size: 3rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .right-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 1rem;
+        }
+
+        .time-greeting {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            text-align: right;
+        }
+
+        .current-date {
+            color: white;
+            font-size: 1rem;
+            font-weight: 400;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .clock-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .clock-view.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .clock-time {
+            color: white;
+            font-size: 4rem;
+            font-weight: 700;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            margin-bottom: 0.5rem;
+        }
+
+        .clock-date {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 400;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .settings-button {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .settings-button.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .settings-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .settings-icon {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .welcome-text {
+                font-size: 2rem;
+            }
+            
+            .time-greeting {
+                font-size: 1.2rem;
+            }
+            
+            .clock-time {
+                font-size: 3rem;
+            }
+            
+            .clock-date {
+                font-size: 1.2rem;
+            }
+            
+            .greeting-view {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Greeting View -->
+        <div class="greeting-view" id="greetingView">
+            <div class="welcome-text">Welcome back.</div>
+            <div class="right-content">
+                <div class="time-greeting" id="timeGreeting"></div>
+                <div class="current-date" id="currentDate"></div>
+            </div>
+        </div>
+
+        <!-- Clock View -->
+        <div class="clock-view" id="clockView">
+            <div class="clock-time" id="clockTime"></div>
+            <div class="clock-date" id="clockDate"></div>
+        </div>
+
+        <!-- Settings Button -->
+        <button class="settings-button" id="settingsButton">
+            <div class="settings-icon">⚙</div>
+        </button>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            backgroundImageUrl: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-Nuurldv2ceIR6di5oc32inswzAcvGO.png'
+        };
+
+        // State
+        let showClock = false;
+        let use24Hour = true;
+
+        // DOM Elements
+        const greetingView = document.getElementById('greetingView');
+        const clockView = document.getElementById('clockView');
+        const settingsButton = document.getElementById('settingsButton');
+        const timeGreeting = document.getElementById('timeGreeting');
+        const currentDate = document.getElementById('currentDate');
+        const clockTime = document.getElementById('clockTime');
+        const clockDate = document.getElementById('clockDate');
+
+        // Set background image from config
+        document.body.style.backgroundImage = `url('${config.backgroundImageUrl}')`;
+
+        // Time-based greeting function
+        function getTimeBasedGreeting(hour) {
+            if (hour >= 5 && hour < 12) {
+                return 'Good morning';
+            } else if (hour >= 12 && hour < 17) {
+                return 'Enjoy your lunch!';
+            } else {
+                return 'Good night';
+            }
+        }
+
+        // Format time function
+        function formatTime(date, use24Hour) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const seconds = date.getSeconds();
+
+            if (use24Hour) {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                const hour12 = hours % 12 || 12;
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                return `${hour12}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} ${ampm}`;
+            }
+        }
+
+        // Format date function
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}/${month}/${day}`;
+        }
+
+        // Update display function
+        function updateDisplay() {
+            const now = new Date();
+            const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+            
+            if (showClock) {
+                clockTime.textContent = formatTime(japanTime, use24Hour);
+                clockDate.textContent = formatDate(japanTime);
+            } else {
+                timeGreeting.textContent = getTimeBasedGreeting(japanTime.getHours());
+                currentDate.textContent = formatDate(japanTime);
+            }
+        }
+
+        // Toggle view function
+        function toggleView() {
+            showClock = !showClock;
+            
+            if (showClock) {
+                greetingView.classList.add('hidden');
+                clockView.classList.add('visible');
+                settingsButton.classList.add('visible');
+            } else {
+                greetingView.classList.remove('hidden');
+                clockView.classList.remove('visible');
+                settingsButton.classList.remove('visible');
+            }
+            
+            updateDisplay();
+        }
+
+        // Toggle time format function
+        function toggleTimeFormat() {
+            use24Hour = !use24Hour;
+            updateDisplay();
+        }
+
+        // Event listeners
+        document.addEventListener('click', (e) => {
+            if (e.target !== settingsButton && !settingsButton.contains(e.target)) {
+                toggleView();
+            }
+        });
+
+        settingsButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleTimeFormat();
+        });
+
+        // Initialize
+        updateDisplay();
+        setInterval(updateDisplay, 1000);
+    </script>
+</body>
+</html>
