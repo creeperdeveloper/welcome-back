@@ -151,6 +151,99 @@
             font-weight: 700;
         }
 
+        .feeding-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .feeding-dialog.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .dialog-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .dialog-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+
+        .dialog-message {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .dialog-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .dialog-button {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .dialog-button.yes {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .dialog-button.yes:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .dialog-button.no {
+            background: #f44336;
+            color: white;
+        }
+
+        .dialog-button.no:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+
+        .dialog-button.complete {
+            background: #2196F3;
+            color: white;
+        }
+
+        .dialog-button.complete:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+        }
+
         @media (max-width: 768px) {
             .welcome-text {
                 font-size: 2rem;
@@ -170,6 +263,22 @@
             
             .greeting-view {
                 padding: 1rem;
+            }
+            
+            .dialog-content {
+                padding: 1.5rem;
+            }
+            
+            .dialog-title {
+                font-size: 1.3rem;
+            }
+            
+            .dialog-message {
+                font-size: 1rem;
+            }
+            
+            .dialog-buttons {
+                flex-direction: column;
             }
         }
     </style>
@@ -195,6 +304,18 @@
         <button class="settings-button" id="settingsButton">
             <div class="settings-icon">⚙</div>
         </button>
+
+        <!-- Feeding Confirmation Dialog -->
+        <div class="feeding-dialog" id="feedingDialog">
+            <div class="dialog-content">
+                <div class="dialog-title" id="dialogTitle">Medaka Feeding Check</div>
+                <div class="dialog-message" id="dialogMessage">Did you feed the medaka today?</div>
+                <div class="dialog-buttons" id="dialogButtons">
+                    <button class="dialog-button yes" id="yesButton">YES</button>
+                    <button class="dialog-button no" id="noButton">NO</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -215,9 +336,99 @@
         const currentDate = document.getElementById('currentDate');
         const clockTime = document.getElementById('clockTime');
         const clockDate = document.getElementById('clockDate');
+        const feedingDialog = document.getElementById('feedingDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+        const yesButton = document.getElementById('yesButton');
+        const noButton = document.getElementById('noButton');
 
         // Set background image from config
         document.body.style.backgroundImage = `url('${config.backgroundImageUrl}')`;
+
+        // Feeding management functions
+        function getTodayDateString() {
+            const now = new Date();
+            const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+            return formatDate(japanTime);
+        }
+
+        function checkFeedingStatus() {
+            const esayari = localStorage.getItem('esayari');
+            const latest = localStorage.getItem('latest');
+            const today = getTodayDateString();
+            
+            // If esayari is true and the date matches today, feeding is done
+            if (esayari === 'true' && latest === today) {
+                return true;
+            }
+            
+            // If date has changed, reset feeding status
+            if (latest && latest !== today) {
+                localStorage.setItem('esayari', 'false');
+            }
+            
+            return false;
+        }
+
+        function setFeedingComplete() {
+            const today = getTodayDateString();
+            localStorage.setItem('esayari', 'true');
+            localStorage.setItem('latest', today);
+        }
+
+        function showFeedingDialog() {
+            dialogTitle.textContent = 'Medaka Feeding Check';
+            dialogMessage.textContent = 'Did you feed the medaka today?';
+            dialogButtons.innerHTML = `
+                <button class="dialog-button yes" id="yesButton">YES</button>
+                <button class="dialog-button no" id="noButton">NO</button>
+            `;
+            
+            // Re-attach event listeners
+            document.getElementById('yesButton').addEventListener('click', handleYesClick);
+            document.getElementById('noButton').addEventListener('click', handleNoClick);
+            
+            feedingDialog.classList.add('visible');
+        }
+
+        function showWaitingDialog() {
+            dialogTitle.textContent = 'Feeding Required';
+            dialogMessage.textContent = 'Waiting for feeding completion...';
+            dialogButtons.innerHTML = `
+                <button class="dialog-button complete" id="completeButton">Complete</button>
+            `;
+            
+            document.getElementById('completeButton').addEventListener('click', handleCompleteClick);
+        }
+
+        function hideFeedingDialog() {
+            feedingDialog.classList.remove('visible');
+        }
+
+        function handleYesClick() {
+            setFeedingComplete();
+            hideFeedingDialog();
+            proceedToShowClock();
+        }
+
+        function handleNoClick() {
+            showWaitingDialog();
+        }
+
+        function handleCompleteClick() {
+            setFeedingComplete();
+            hideFeedingDialog();
+            proceedToShowClock();
+        }
+
+        function proceedToShowClock() {
+            showClock = true;
+            greetingView.classList.add('hidden');
+            clockView.classList.add('visible');
+            settingsButton.classList.add('visible');
+            updateDisplay();
+        }
 
         // Time-based greeting function
         function getTimeBasedGreeting(hour) {
@@ -267,21 +478,22 @@
             }
         }
 
-        // Toggle view function
         function toggleView() {
-            showClock = !showClock;
-            
-            if (showClock) {
-                greetingView.classList.add('hidden');
-                clockView.classList.add('visible');
-                settingsButton.classList.add('visible');
+            if (!showClock) {
+                // Trying to show clock - check feeding status first
+                if (!checkFeedingStatus()) {
+                    showFeedingDialog();
+                    return;
+                }
+                proceedToShowClock();
             } else {
+                // Going back to greeting view
+                showClock = false;
                 greetingView.classList.remove('hidden');
                 clockView.classList.remove('visible');
                 settingsButton.classList.remove('visible');
+                updateDisplay();
             }
-            
-            updateDisplay();
         }
 
         // Toggle time format function
@@ -290,9 +502,21 @@
             updateDisplay();
         }
 
+        function checkDailyFeedingStatus() {
+            if (!checkFeedingStatus() && showClock) {
+                // If we're showing the clock but feeding status is invalid, go back to greeting
+                showClock = false;
+                greetingView.classList.remove('hidden');
+                clockView.classList.remove('visible');
+                settingsButton.classList.remove('visible');
+                updateDisplay();
+            }
+        }
+
         // Event listeners
         document.addEventListener('click', (e) => {
-            if (e.target !== settingsButton && !settingsButton.contains(e.target)) {
+            if (e.target !== settingsButton && !settingsButton.contains(e.target) && 
+                !feedingDialog.contains(e.target)) {
                 toggleView();
             }
         });
@@ -305,6 +529,7 @@
         // Initialize
         updateDisplay();
         setInterval(updateDisplay, 1000);
+        setInterval(checkDailyFeedingStatus, 1000);
     </script>
 </body>
 </html>
